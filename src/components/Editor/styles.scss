@@ -1,0 +1,28 @@
+.editor-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    .editor-title {
+        padding: 5px;
+        display: flex;
+        > *:first-child {
+            flex-grow: 1;
+            font-size: large;
+            text-align: center;
+        }
+    }
+    .editor-controls {
+        padding: 5px;
+        & > * {
+            margin: 0 5px;
+        }
+    }
+    .editor-body {
+        flex-grow: 1;
+        border: solid 1px gray;
+        min-height: '6em';
+        .editor {
+            height: 100%;
+        }
+    }
+}
