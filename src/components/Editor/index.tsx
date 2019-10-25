@@ -1,58 +1,13 @@
-import React, {useState, useRef, useGlobal, useDispatch} from 'reactn';
-import { FunctionComponent, useEffect } from 'react';
-import {Editor, EditorState, RichUtils, AtomicBlockUtils, convertToRaw} from 'draft-js';
+import React, {useState, useRef, useGlobal, useDispatch, useEffect } from 'reactn';
+import {Editor, EditorState, convertToRaw} from 'draft-js';
 import CodeEditor from '@components/CodeEditor';
-import { convertDraftToHTML, MyBlockTypes, convertHTMLToDraft } from '@utilities/EditorConversion';
+import { convertDraftToHTML, convertHTMLToDraft } from '@utilities/EditorConversion';
 import { Button } from 'antd';
+import controls from './controls';
 
 import 'draft-js/dist/Draft.css';
 import './styles.scss';
 
-interface IControlProps {
-    editorState: EditorState;
-    onChange(es: EditorState): void;
-}
-
-const blockTypes = [
-    { label: 'Normal', style: 'unstyled' },
-    { label: 'H1', style: 'header-one' },
-    { label: 'H2', style: 'header-two' },
-    { label: 'H3', style: 'header-three' },
-    { label: 'H4', style: 'header-four' },
-    { label: 'H5', style: 'header-five' },
-    { label: 'H6', style: 'header-six' },
-    { label: 'Blockquote', style: 'blockquote' },
-    { label: 'Code', style: 'code' },
-];
-const BlockType = ({editorState, onChange}: IControlProps) => {
-    let current = blockTypes[0].style;
-    try {
-        current = RichUtils.getCurrentBlockType(editorState);
-    } catch (er) {}
-    const onSelect = (e: React.ChangeEvent<HTMLSelectElement>) => onChange(RichUtils.toggleBlockType(editorState, e.target.value));
-    return <select value={current} onChange={onSelect}>
-        {blockTypes.map(({label, style}) => <option key={label} value={style}>{label}</option>)}
-    </select>
-}
-
-const AddEditor = ({editorState, onChange}: IControlProps) => {
-    const onClick = () => {
-        const contentState = editorState.getCurrentContent();
-        const contentStateWithEntity = contentState.createEntity(
-            MyBlockTypes.EDITOR,
-            'IMMUTABLE'
-        );
-        const entityKey = contentStateWithEntity.getLastCreatedEntityKey();
-        const stateWithNewContent = EditorState.set(editorState, {currentContent: contentStateWithEntity});
-        const newState = AtomicBlockUtils.insertAtomicBlock(stateWithNewContent, entityKey, '*');
-        onChange(newState);
-    }
-    return <Button onClick={onClick}>הכנסת קוד</Button>;
-}
-const controls: FunctionComponent<IControlProps>[] = [
-    BlockType,
-    AddEditor
-];
 interface IState {
     editorState: EditorState;
     readonly: boolean;
@@ -67,7 +22,7 @@ export default () => {
     const editorRef = useRef<Editor>();
 
     useEffect(() => {
-        const html = selectedFile && files[selectedFile.file] || '';
+        const html = selectedFile && files[selectedFile.key] || '';
         setEditorState(html ? 
             EditorState.set(editorState, {currentContent: convertHTMLToDraft(html)}) :
             EditorState.createEmpty()
@@ -101,7 +56,7 @@ export default () => {
         return null;
     }
 
-    const save = () => saveFile(selectedFile.file, convertDraftToHTML(editorState.getCurrentContent()));
+    const save = () => saveFile(selectedFile.key, convertDraftToHTML(editorState.getCurrentContent()));
 
     // Temporary
     const htmlRef = useRef<HTMLIFrameElement>();

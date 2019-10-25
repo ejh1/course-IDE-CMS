@@ -5,12 +5,11 @@ import 'firebase/storage';
 import undefined from 'firebase/auth';
 
 export interface IFile {
+    key: string;
     name: string;
-    file: string;
 }
 export interface IFolder {
-    files: IFile[];
-    folders: IFile[];
+    children: IFile[];
 }
 export const isFolder = (file: string) => file.endsWith('.json');
 export const ROOT_FOLDER = 'root.json';
@@ -78,29 +77,29 @@ export const initializeGlobalState = () => {
         setFolders: (global, _dispatch, folders: {[key: string]: IFolder}) => ({folders: {...global.folders, ...folders}}),
         getFolder: async (_global, dispatch, folder: string) => {
             const json = await fetchFile(folder);
-            dispatch.setFolders({[folder]: json ? JSON.parse(json) : {}});
+            dispatch.setFolders({[folder]: json ? JSON.parse(json) : {children: []}});
         },
         setFiles: (global, _dispatch, files: {[key: string]: string}) => ({files: {...global.files, ...files}}),
-        getFile: async (global, dispatch, {file}: IFile) => {
-            const text = await fetchFile(file);
-            dispatch.setFiles({[file]:text});
+        getFile: async (global, dispatch, {key}: IFile) => {
+            const text = await fetchFile(key);
+            dispatch.setFiles({[key]:text});
         },
         selectFile: (global, dispatch, data: IFile) => {
             dispatch.getFile(data);
             return {selectedFile: data};
         },
-        saveFile: async (_global, dispatch, file: string, content: string) => {console.log(content);
-            const _isFolder = isFolder(file);
+        saveFile: async (_global, dispatch, key: string, content: string) => {
+            const _isFolder = isFolder(key);
             if (useLocal) {
-                localStorage[file] = content;
+                localStorage[key] = content;
             } else {
-                await app.storage().ref().child(file).putString(content,
+                await app.storage().ref().child(key).putString(content,
                     undefined, {contentType: _isFolder ? 'application/json' : 'text/html'});
             }
             if (_isFolder) {
-                dispatch.getFolder(file);
+                dispatch.getFolder(key);
             } else {
-                dispatch.getFile({file, name: ''})
+                dispatch.getFile({key, name: ''})
             }
         }
     });

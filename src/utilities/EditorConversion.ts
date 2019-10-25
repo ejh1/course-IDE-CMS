@@ -18,7 +18,7 @@ const blockToHTML = (entityMap: any, block: any) => {
         const entity = entityMap[get(block, 'entityRanges[0].key')];
         if (entity && entity.type === MyBlockTypes.EDITOR) {
             const {value, formatted} = entity.data;
-            return `<div class="code-block" data-value="${encodeURIComponent(value)}">${formatted}</div>`;
+            return `<div class="code-block" data-value="${encodeURIComponent(JSON.stringify({javascript:value}))}">${formatted}</div>`;
         }
     }
 }

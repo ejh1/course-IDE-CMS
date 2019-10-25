@@ -6,6 +6,7 @@ import cloneDeep from 'lodash/cloneDeep';
 const { TreeNode, DirectoryTree } = Tree;
 
 import './styles.scss';
+import { AntTreeNodeDropEvent } from 'antd/lib/tree/Tree';
 
 interface IProps {
     basePath: string;
@@ -19,8 +20,6 @@ const generateId = (length: number) => {
     return result;
  }
 
- const getEntities = (folder: IFolder, file: string): IFile[] => folder[isFolder(file) ? 'folders' : 'files'] || [];
- 
 export const Explorer = (props: IProps) => {
     const [folders] = useGlobal('folders');
     const getFolder = useDispatch('getFolder');
@@ -36,36 +35,29 @@ export const Explorer = (props: IProps) => {
         if (!isFolder(selected)) {
             // Find the folder which includes the selected file
             selectedFolder = getContainingFolder(selected);
-            selectFile(folders[selectedFolder].files.find(({file}) => file === selected));
+            selectFile(folders[selectedFolder].children.find(({key}) => key === selected));
         }
         setSelectedEntity(selected);
         setSelectedFolder(selectedFolder);
     };
     const displayFolder = (key: string) => {
         const folder = folders[key];
-        return folder &&
-            ((folder.folders || [])).map(({file, name}) =>
-                <TreeNode title={name} key={file} loadData={loadFolder}>{displayFolder(file)}</TreeNode>)
-            .concat
-                (((folder.files || [])).map(({file, name}) => <TreeNode title={name} key={file} isLeaf/>));
+        return folder && folder.children.map(({key, name}) => isFolder(key) ?
+                <TreeNode title={name} key={key} loadData={loadFolder}>{displayFolder(key)}</TreeNode> :
+                <TreeNode title={name} key={key} isLeaf/>);
     };
     const getContainingFolder = (child: string): string =>
-        Object.keys(folders).find(key => getEntities(folders[key], child).some(({file}) => child === file)) || ROOT_FOLDER;
+        Object.keys(folders).find(key => folders[key].children.some(({key}) => child === key)) || ROOT_FOLDER;
 
     const addToFolder = (isFolder: boolean) => {
-        const folderName = selectedFolder || ROOT_FOLDER;
-        const folder = folders[folderName];
-        const newFile = {
+        const folderKey = selectedFolder || ROOT_FOLDER;
+        const folder = folders[folderKey];
+        const newFolder = cloneDeep(folder);
+        newFolder.children.push({
             name: isFolder ? 'תיקייה חדשה' : 'קובץ חדש',
-            file: `${generateId(8)}.${isFolder ? 'json' : 'html'}`
-        }
-        const newFolder = {...folder} as any;
-        if (isFolder) {
-            newFolder.folders = [...newFolder.folders || [], newFile];
-        } else {
-            newFolder.files = [...newFolder.files || [], newFile];
-        }
-        saveFile(folderName, JSON.stringify(newFolder));
+            key: `${generateId(8)}.${isFolder ? 'json' : 'html'}`
+        });
+        saveFile(folderKey, JSON.stringify(newFolder));
     };
     const modifyContainingFolder = (modifier: (folder: IFolder) => IFolder | void) => {
         const containingFolderKey = getContainingFolder(selectedEntity);
@@ -74,7 +66,7 @@ export const Explorer = (props: IProps) => {
     }
     const rename = () => {
         modifyContainingFolder((folderClone: IFolder) => {
-            const entity = getEntities(folderClone, selectedEntity).find(({file}) => file === selectedEntity);
+            const entity = folderClone.children.find(({key}) => key === selectedEntity);
             const newName = prompt('שם חדש', entity.name).trim();
             if (newName && newName != entity.name) {
                 entity.name = newName.replace(/\s+/g, ' ');
@@ -84,14 +76,42 @@ export const Explorer = (props: IProps) => {
     }
     const deleteFile = () => {
         modifyContainingFolder((folderClone: IFolder) => {
-            const entities = getEntities(folderClone, selectedEntity);
-            const idx = entities.findIndex(({file}) => file === selectedEntity);
-            const entity = entities[idx];
+            const idx = folderClone.children.findIndex(({key}) => key === selectedEntity);
+            const entity = folderClone.children[idx];
             if (entity && confirm(`Are you sure you want to delete the ${isFolder(selectedEntity) ? 'folder' : 'file'} ${entity.name}`)) {
-                entities.splice(idx,1);
+                folderClone.children.splice(idx,1);
                 return folderClone;
             }
         })
+    }
+    const onDrop = ({node, dragNode, dropPosition, dropToGap}: AntTreeNodeDropEvent) => {
+        const dropKey = node.props.eventKey;
+        const dragKey = dragNode.props.eventKey;
+        // src
+        const parent1Key = getContainingFolder(dragKey);
+        const parent1 = cloneDeep(folders[parent1Key]);
+
+        // dest
+        let parent2Key = getContainingFolder(dropKey);
+        let parent2 = (parent1Key === parent2Key) ? parent1 : cloneDeep(folders[parent2Key]);
+        const destIdx = parent2.children.findIndex(({key}) => key === dropKey);
+        
+        // Remove from parent (after we got initial dest index)
+        const [entity] = parent1.children.splice(parent1.children.findIndex(({key}) => key === dragKey), 1);
+        
+        if (isFolder(dropKey) && !dropToGap) {
+            parent2Key = dropKey;
+            parent2 = cloneDeep(folders[parent2Key]);
+            parent2.children.push(entity);            
+            // Append to target children
+        } else {
+            // dropPosition can be dropNode's index / +- 1 (drag before/on/after)
+            const isAfter = dropPosition >= destIdx;
+            const curDestIdx = parent2.children.findIndex(({key}) => key === dropKey);
+            parent2.children.splice(isAfter ? curDestIdx+1 : curDestIdx, 0, entity);
+        }
+        saveFile(parent2Key, JSON.stringify(parent2));
+        parent1Key != parent2Key && saveFile(parent1Key, JSON.stringify(parent1));
     }
     const loadFolder = async (treeNode: any) => {
         if (!folders[treeNode.props.eventKey]) {
@@ -109,7 +129,8 @@ export const Explorer = (props: IProps) => {
                 <Button onClick={rename} >שינוי שם</Button>
             </span>}
         </div>
-        <DirectoryTree
+        <DirectoryTree draggable
+            onDrop={onDrop}
             loadData={loadFolder}
             onSelect={onSelect}
         >

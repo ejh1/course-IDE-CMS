@@ -4,6 +4,7 @@
     height: 100%;
     .editor-title {
         padding: 5px;
+        border-bottom: solid 1px lightgray;
         display: flex;
         > *:first-child {
             flex-grow: 1;
@@ -13,14 +14,13 @@
     }
     .editor-controls {
         padding: 5px;
+        border-bottom: solid 1px lightgray;
         & > * {
             margin: 0 5px;
         }
     }
     .editor-body {
         flex-grow: 1;
-        border: solid 1px gray;
-        min-height: '6em';
         .editor {
             height: 100%;
         }
