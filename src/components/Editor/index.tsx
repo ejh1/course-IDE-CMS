@@ -1,8 +1,8 @@
 import React, {useState, useRef, useGlobal, useDispatch, useEffect } from 'reactn';
-import {Editor, EditorState, convertToRaw} from 'draft-js';
+import {Editor, EditorState, KeyBindingUtil, convertToRaw, RichUtils} from 'draft-js';
 import CodeEditor from '@components/CodeEditor';
 import { convertDraftToHTML, convertHTMLToDraft } from '@utilities/EditorConversion';
-import { Button } from 'antd';
+import { Button, Switch } from 'antd';
 import controls from './controls';
 
 import 'draft-js/dist/Draft.css';
@@ -14,6 +14,8 @@ interface IState {
 }
 export default () => {
     const [editorState, setEditorState] = useState(EditorState.createEmpty());
+    const [rawMode, setRawMode] = useState(false);
+    const [rawData, setRawData] = useState('');
     const [readonly, setReadonly] = useState(false);
     const [changed, setChanged] = useState(false);
     const [files] = useGlobal('files');
@@ -23,10 +25,12 @@ export default () => {
 
     useEffect(() => {
         const html = selectedFile && files[selectedFile.key] || '';
-        setEditorState(html ? 
-            EditorState.set(editorState, {currentContent: convertHTMLToDraft(html)}) :
+        const currentContent = html && convertHTMLToDraft(html);
+        setEditorState(currentContent ? 
+            EditorState.set(editorState, {currentContent}) :
             EditorState.createEmpty()
         );
+        html && setRawData(html);
         setChanged(false);
     }, [selectedFile, files]);
     const setCode = (entityKey: string, data: any) => {
@@ -37,6 +41,20 @@ export default () => {
     const onChange = (editorState: EditorState) => {
         setChanged(true);
         setEditorState(editorState);
+    }
+
+    const toggleRawMode = () => setRawMode(!rawMode);
+    const rawDataChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setRawData(e.target.value);
+        setChanged(true);
+    }
+
+    const handleReturn = (e: React.KeyboardEvent, editorState: EditorState) => {
+        if (KeyBindingUtil.isSoftNewlineEvent(e)) {
+            setEditorState(RichUtils.insertSoftNewline(editorState));
+            return 'handled'
+        }
+        return 'not-handled';
     }
 
     const editorBlockRenderer = (block: any) => {
@@ -56,18 +74,7 @@ export default () => {
         return null;
     }
 
-    const save = () => saveFile(selectedFile.key, convertDraftToHTML(editorState.getCurrentContent()));
-
-    // Temporary
-    const htmlRef = useRef<HTMLIFrameElement>();
-    const toHTML = () => {
-        const html = convertDraftToHTML(editorState.getCurrentContent());
-        htmlRef.current.contentDocument.documentElement.innerHTML = html;
-    }
-    const fromHTML = () => {
-        const html = htmlRef.current.contentDocument.documentElement.innerHTML;
-        setEditorState(EditorState.set(editorState, {currentContent: convertHTMLToDraft(html)}));
-    }
+    const save = () => saveFile(selectedFile.key, rawMode ? rawData : convertDraftToHTML(editorState.getCurrentContent()));
 
     return !selectedFile ? null : (
         <div className="editor-root">
@@ -76,21 +83,21 @@ export default () => {
                 <Button onClick={save} type="primary" disabled={!changed}>שמירה</Button>
             </div>
             <div className="editor-controls">
-                {controls.map((Control, idx) => <Control key={idx} editorState={editorState} onChange={onChange} />)}
+                <Switch checkedChildren="HTML" unCheckedChildren="Editor" checked={rawMode} onChange={toggleRawMode}/>
+                {!rawMode && controls.map((Control, idx) => <Control key={idx} editorState={editorState} onChange={onChange} />)}
             </div>
             <div className="editor-body">
-                <div className="editor">
+                {rawMode ?
+                    <textarea value={rawData} onChange={rawDataChange}/> :
                     <Editor
                         ref={editorRef}
                         editorState={editorState}
+                        handleReturn={handleReturn}
                         onChange={onChange}
                         blockRendererFn={editorBlockRenderer}
                         readOnly={readonly}
                     />
-                </div>
-                {/* <button onClick={toHTML}>To HTML</button>
-                <button onClick={fromHTML}>From HTML</button>
-                <div><iframe style={{width:'90vw',height:'50vh'}} ref={htmlRef}/></div> */}
+                }
             </div>
         </div>
     );

@@ -48,6 +48,24 @@ const generateBlockTypeButton = (icon: string, blockType: string) => {
         return <Button icon={icon} onClick={onClick} className={(current === blockType) ? 'selected' : ''}/>
     }
 }
+
+const inlineStyles = [
+    "bold",
+    "italic",
+    "underline",
+    "strikethrough",
+    "code",
+    // "superscript",
+    // "subscript"
+]
+const Inline: EditorControl = ({editorState, onChange}) => {
+    const applyStyle = (e: React.MouseEvent<HTMLElement>) => {
+        const style = ((e.target as any).getAttribute('name') as string).toUpperCase();
+        onChange(RichUtils.toggleInlineStyle(editorState, style));
+    }
+    return <span className="inline-controls">{inlineStyles.map(style => <Button key={style} name={style} icon={style} onClick={applyStyle}/>)}</span>
+}
+
 const AddEditor: EditorControl = ({editorState, onChange}) => {
     const onClick = () => {
         const contentState = editorState.getCurrentContent();
@@ -67,5 +85,6 @@ export default [
     BlockType,
     generateBlockTypeButton('ordered-list', 'ordered-list-item'),
     generateBlockTypeButton('unordered-list', 'unordered-list-item'),
+    Inline,
     AddEditor,
 ]
