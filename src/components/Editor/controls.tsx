@@ -49,7 +49,7 @@ const generateBlockTypeButton = (icon: string, blockType: string) => {
     }
 }
 
-const inlineStyles = [
+export const inlineStyles = [
     "bold",
     "italic",
     "underline",

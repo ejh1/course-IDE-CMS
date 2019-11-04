@@ -104,8 +104,15 @@ const blockToHTML = (entityMap: any, blocks: Block[], block: Block, idx: number)
     if (type == 'atomic') {
         const entity = entityMap[get(block, 'entityRanges[0].key')];
         if (entity && entity.type === MyBlockTypes.EDITOR) {
-            const {value, formatted} = entity.data;
-            return `<div class="code-block" data-value="${encodeURIComponent(JSON.stringify({javascript:value}))}">${formatted}</div>`;
+            const {value, formatted: _formatted, values: _values} = entity.data;
+            if (!_values && !value) {
+                return '';
+            }
+            const values = _values || {javascript: value};
+            const formatted = typeof _formatted === 'string' ? {javascript: _formatted} : _formatted;
+            return `<div class="code-block" data-value="${encodeURIComponent(JSON.stringify(values))}">${
+                Object.keys(formatted).map(lang => `<div data-language="${lang}">${formatted[lang]}</div>`).join('')
+            }</div>`;
         }
     }
 }

@@ -3,7 +3,7 @@ import {Editor, EditorState, KeyBindingUtil, convertToRaw, RichUtils} from 'draf
 import CodeEditor from '@components/CodeEditor';
 import { convertDraftToHTML, convertHTMLToDraft } from '@utilities/EditorConversion';
 import { Button, Switch } from 'antd';
-import controls from './controls';
+import controls, {inlineStyles} from './controls';
 
 import 'draft-js/dist/Draft.css';
 import './styles.scss';
@@ -11,6 +11,15 @@ import './styles.scss';
 interface IState {
     editorState: EditorState;
     readonly: boolean;
+}
+const customStyle: {[key: string]: {[key: string]: string}} = {
+    'CODE': {
+        fontFamily: 'monospace',
+        unicodeBidi: 'plaintext',
+        padding: '3px',
+        background: '#e8e8e8',
+        borderRadius: '3px'
+    }
 }
 export default () => {
     const [editorState, setEditorState] = useState(EditorState.createEmpty());
@@ -49,6 +58,16 @@ export default () => {
         setChanged(true);
     }
 
+    const handleKeyCommand = (command: string, editorState: EditorState) => {
+        if (inlineStyles.includes(command)) {
+            const newState = RichUtils.handleKeyCommand(editorState, command);
+            if (newState) {
+                onChange(newState);
+                return 'handled';
+            }
+        }
+        return 'not-handled';
+    }
     const handleReturn = (e: React.KeyboardEvent, editorState: EditorState) => {
         if (KeyBindingUtil.isSoftNewlineEvent(e)) {
             setEditorState(RichUtils.insertSoftNewline(editorState));
@@ -92,8 +111,10 @@ export default () => {
                     <Editor
                         ref={editorRef}
                         editorState={editorState}
+                        handleKeyCommand={handleKeyCommand}
                         handleReturn={handleReturn}
                         onChange={onChange}
+                        customStyleMap={customStyle}
                         blockRendererFn={editorBlockRenderer}
                         readOnly={readonly}
                     />

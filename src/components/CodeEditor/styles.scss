@@ -1,3 +1,29 @@
+$border : #e8e8e8;
 .code-editor {
-    min-height: 50px;
+    .editor-tabs {
+        display: flex;
+        align-items: flex-end;
+        margin-bottom: 4px;
+        .tab {
+            color: black;
+            background: #fafafa;
+            border: solid 1px $border;
+            border-radius: 4px 4px 0 0;
+            padding: 5px;
+            margin-left: 5px;
+            border-bottom-width: 0;
+            cursor: pointer;
+            &.selected {
+                background: white;
+                color: #1890ff;
+                border-bottom: solid 1px transparent;
+                position: relative;
+                top: 1px;
+            }
+        }
+        border-bottom: solid 1px $border;
+    }
+    .editor-body {
+        min-height: 50px;
+    }
 }
