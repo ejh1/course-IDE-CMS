@@ -2,6 +2,9 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+const CompressionPlugin = require('compression-webpack-plugin');
+const S3Plugin = require('webpack-s3-plugin');
+const AWS = require('aws-sdk/global');
 
 module.exports = {
     mode: "production",
@@ -74,5 +77,36 @@ module.exports = {
             template: './src/index.html'
         }),
         new MonacoWebpackPlugin({languages:['javascript','typescript','html','css']}),
+        new CompressionPlugin({
+            test: /\.(js|css|map)$/,
+            filename: '[path][query]',
+            algorithm: 'gzip',
+            // deleteOriginalAssets: true
+        }),
+        new S3Plugin({
+            s3Options: {
+                credentials: new AWS.SharedIniFileCredentials({profile: 'private'})
+            },
+            s3UploadOptions: {
+              Bucket: 'demo-mtova-course-cms', // Your bucket name
+              // Here we set the Content-Encoding header for all the gzipped files to 'gzip'
+              ContentEncoding(fileName) {
+                if (/\.(js|css|map)$/.test(fileName)) {
+                  return 'gzip'
+                }
+              },
+              // Here we set the Content-Type header for the gzipped files to their appropriate values, so the browser can interpret them properly
+              ContentType(fileName) {
+                if (/\.css/.test(fileName)) {
+                  return 'text/css'
+                }
+                if (/\.js/.test(fileName)) {
+                  return 'application/javascript'
+                }
+              }
+            },
+            // basePath: 'my-dist', // This is the name the uploaded directory will be given
+            // directory: 'public/dist' // This is the directory you want to upload
+        })
     ]
 };
