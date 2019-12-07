@@ -111,7 +111,7 @@ const blockToHTML = (entityMap: any, blocks: Block[], block: Block, idx: number)
             const values = _values || {javascript: value};
             const formatted = typeof _formatted === 'string' ? {javascript: _formatted} : _formatted;
             return `<div class="code-block" data-value="${encodeURIComponent(JSON.stringify(values))}">${
-                Object.keys(formatted).map(lang => `<div data-language="${lang}">${formatted[lang]}</div>`).join('')
+                ['javascript','html','css'].filter((lang) => formatted[lang]).map(lang => `<div data-language="${lang}">${formatted[lang]}</div>`).join('')
             }</div>`;
         }
     }

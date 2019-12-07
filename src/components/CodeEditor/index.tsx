@@ -3,7 +3,6 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import debounce from 'lodash/debounce';
 
 import './styles.scss';
-import { access } from 'fs';
 
 interface IData {
     value?: string; // deprecated
@@ -49,30 +48,30 @@ export default class CodeEditor extends React.Component<IProps> {
     getValue = (props: IProps) => {
         const {blockProps: {data}} = props;
         if (data) {
-            let {values} = data;
+            let {values, formatted} = data;
             if (!values) {
                 values = {};
                 if (data.value) {
                     values['javascript'] = data.value;
                 }
             }
-            return values;
+            return [values, formatted || {}];
         }
-        return {};
+        return [{}, {}];
     }
     updateModel = () => {
-        const values = this.getValue(this.props);
-        Object.keys(values).forEach(lang => {
+        [this.values, this.formatted] = this.getValue(this.props);
+        Object.keys(this.values).forEach(lang => {
             const tab = this.tabs.find(({lang: _lang}) => lang === _lang);
             let {model} = tab;
             if (!model) {
                 model = tab.model = monaco.editor.createModel('', lang);
             }
-            if (model.getValue() !== values[lang]) {
-                model.setValue(values[lang]);
+            if (model.getValue() !== this.values[lang]) {
+                model.setValue(this.values[lang]);
             }
         });
-        this.chosenTabIndex = Math.max(0, this.tabs.findIndex(({lang}) => values[lang]));
+        this.chosenTabIndex = Math.max(0, this.tabs.findIndex(({lang}) => this.values[lang]));
         const tab = this.tabs[this.chosenTabIndex];
         if (!tab.model) {
             tab.model = monaco.editor.createModel('', tab.lang);
@@ -82,8 +81,8 @@ export default class CodeEditor extends React.Component<IProps> {
         setTimeout(this.forceUpdate.bind(this), 50);
     }
     componentDidUpdate = (prevProps: IProps) => {
-        const values = this.getValue(this.props);
-        if (values && JSON.stringify(values) !== JSON.stringify(this.getValue(prevProps))) {
+        const [values] = this.getValue(this.props);
+        if (values && JSON.stringify(values) !== JSON.stringify(this.getValue(prevProps)[0])) {
             this.updateModel();
         }
     }
@@ -93,7 +92,7 @@ export default class CodeEditor extends React.Component<IProps> {
     updateHeight = () => {
         const model = this._editor.getModel();
         if (this._container) {
-            const height = model.getLineCount() * 19;
+            const height = (model.getLineCount() + 1) * 19;
             this._container.style.height = height + 'px';
             this._editor.layout();
         }
@@ -103,31 +102,22 @@ export default class CodeEditor extends React.Component<IProps> {
         const model = this.updateHeight();
         const lang = this.tabs[this.chosenTabIndex].lang;
         const value = model.getValue();
+        const {values, formatted} = this;
         if (value) {
-            this.values[lang] = value;
-            this.formatted[lang] = (this._editor as any)._modelData.viewModel.getHTMLToCopy([model.getFullModelRange()], false);
+            values[lang] = value;
+            formatted[lang] = (this._editor as any)._modelData.viewModel.getHTMLToCopy([model.getFullModelRange()], false);
         } else {
-            delete this.values[lang];
-            delete this.formatted[lang];
+            delete values[lang];
+            delete formatted[lang];
         }
-        // Order the values according to the tabs values
-        this.values = this.tabs.reduce((acc: IData['values'], {lang}) => {
-            const value = this.values[lang];
-            if (value) {
-                acc[lang] = value;
-            }
-            return acc;
-        }, {});
-        this.props.blockProps.setCode({
-            values: this.values,
-            formatted: this.formatted
-        });
+        this.props.blockProps.setCode({values, formatted});
     }
     onTabSelect = (idx: number) => {
         this.chosenTabIndex = idx;
         const tab = this.tabs[idx];
         let model = tab.model || (tab.model = monaco.editor.createModel('', tab.lang));
         this._editor.setModel(model);
+        this.updateHeight();
         this.forceUpdate();
     }
 

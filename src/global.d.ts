@@ -1,5 +1,5 @@
 import 'reactn';
-import { IFile, IFolder } from './services/storage';
+import { IFile, IFolder, ILanguage } from './services/storage';
 
 declare module 'reactn/default' {
     interface Reducer<T, O> {
@@ -14,6 +14,7 @@ declare module 'reactn/default' {
         setFiles: Reducer< State['files'], Pick<State, 'files'> >;
         getFile: Reducer< IFile, void>;
         selectFile: Reducer< IFile, Pick<State, 'selectedFile'> >;
+        setLanguage: Reducer< State['language'], Pick<State, 'language'> >;
         saveFile: (global: State, dispatch: Dispatch, name: string, content: string) => void;
      }
     export interface State {
@@ -21,5 +22,6 @@ declare module 'reactn/default' {
         'files': {[key: string]: string};
         'user': object;
         'selectedFile': IFile;
+        'language': ILanguage;
     }
 }

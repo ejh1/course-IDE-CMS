@@ -1,9 +1,10 @@
 import React, {useDispatch, useGlobal, useState} from 'reactn';
-import { IFile, ROOT_FOLDER, isFolder, IFolder } from '@services/storage';
-import { Tree, Button } from 'antd';
+import { languages, isFolder, IFolder, ROOT_FOLDER } from '@services/storage';
+import { Tree, Button, Select } from 'antd';
 import cloneDeep from 'lodash/cloneDeep';
 
 const { TreeNode, DirectoryTree } = Tree;
+const { Option } = Select;
 
 import './styles.scss';
 import { AntTreeNodeDropEvent } from 'antd/lib/tree/Tree';
@@ -22,6 +23,8 @@ const generateId = (length: number) => {
 
 export const Explorer = (props: IProps) => {
     const [folders] = useGlobal('folders');
+    const [language] = useGlobal('language');
+    const setLanguage = useDispatch('setLanguage');
     const getFolder = useDispatch('getFolder');
     const saveFile = useDispatch('saveFile');
     const selectFile = useDispatch('selectFile');
@@ -119,8 +122,12 @@ export const Explorer = (props: IProps) => {
             // TODO - find a way to return a promise that resolves when the folder is returned   
         }
     }
+    const languageChanged = (code: string) => setLanguage(languages.find(({code:c}) => c === code) || languages[0]);
     return <div>
         <div className="explorer-controls">
+            <Select value={language.code} onChange={languageChanged}>
+                {languages.map(({code, title}) => <Option value={code} key={code}>{title}</Option>)}
+            </Select>
             <Button type="primary" onClick={logout}>יציאה</Button>
             <Button icon="folder-add" onClick={addToFolder.bind(null, true)} />
             <Button icon="file-add" onClick={addToFolder.bind(null, false)} />

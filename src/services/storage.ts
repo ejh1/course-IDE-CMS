@@ -13,6 +13,24 @@ export interface IFolder {
 }
 export const isFolder = (file: string) => file.endsWith('.json');
 export const ROOT_FOLDER = 'root.json';
+export interface ILanguage {
+    code: string;
+    title: string;
+    pathPrefix: string;
+}
+export const languages: ILanguage[] = [
+    {
+        code : 'he',
+        title : 'עב',
+        pathPrefix : ''
+    },
+    {
+        code : 'ar',
+        title : 'عر',
+        pathPrefix : 'ar/'
+    }
+];
+const defaultLanguage = languages[0];
 
 const firebaseConfig = {
     apiKey: "AIzaSyDvSrdLS9tjp7_SINpB4YWDnYaJXT7Gr20",
@@ -55,11 +73,12 @@ export const initializeGlobalState = () => {
     initialized = true;
     setGlobal({
         folders : {},
-        files: {}
+        files: {},
+        language: defaultLanguage
     });    
     addReducers({
         setUser: (_global, _dispatch, user: object) => ({user}),
-        login: async (_global, dispatch) => {
+        login: async (global, dispatch) => {
             let result = null;
             if (useLocal) {
                 result = {user:{local:'user'}};
@@ -68,32 +87,37 @@ export const initializeGlobalState = () => {
                 result = await app.auth().signInWithPopup(provider);
             }
             dispatch.setUser(result.user);
-            dispatch.getFolder(ROOT_FOLDER);
+            dispatch.setLanguage(global.language);
         },
         logout: async (_global, dispatch) => {
             await firebase.auth().signOut();
             dispatch.setUser(null);
         },
         setFolders: (global, _dispatch, folders: {[key: string]: IFolder}) => ({folders: {...global.folders, ...folders}}),
-        getFolder: async (_global, dispatch, folder: string) => {
-            const json = await fetchFile(folder);
+        getFolder: async (global, dispatch, folder: string) => {
+            const json = await fetchFile(global.language.pathPrefix + folder);
             dispatch.setFolders({[folder]: json ? JSON.parse(json) : {children: []}});
         },
         setFiles: (global, _dispatch, files: {[key: string]: string}) => ({files: {...global.files, ...files}}),
         getFile: async (global, dispatch, {key}: IFile) => {
-            const text = await fetchFile(key);
+            const text = await fetchFile(global.language.pathPrefix + key);
             dispatch.setFiles({[key]:text});
         },
         selectFile: (global, dispatch, data: IFile) => {
             dispatch.getFile(data);
             return {selectedFile: data};
         },
-        saveFile: async (_global, dispatch, key: string, content: string) => {
+        setLanguage: (global, dispatch, language: ILanguage) => {
+            // Will reload the root from the new prefix
+            setTimeout(() => dispatch.getFolder(ROOT_FOLDER), 1);
+            return {language};
+        },
+        saveFile: async (global, dispatch, key: string, content: string) => {
             const _isFolder = isFolder(key);
             if (useLocal) {
                 localStorage[key] = content;
             } else {
-                await app.storage().ref().child(key).putString(content,
+                await app.storage().ref().child(global.language.pathPrefix + key).putString(content,
                     undefined, {contentType: _isFolder ? 'application/json' : 'text/html'});
             }
             if (_isFolder) {
