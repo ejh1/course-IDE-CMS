@@ -6,6 +6,7 @@ declare module 'reactn/default' {
         (global: State, dispatch: Dispatch, value: T): O;
     }
     export interface Reducers {
+        checkLogin: Reducer<void, void>;
         setUser: Reducer< State['user'], Pick< State, 'user'> >;
         login: Reducer<undefined, void>;
         logout: Reducer<undefined, void>;
@@ -20,7 +21,7 @@ declare module 'reactn/default' {
     export interface State {
         'folders': {[key: string]: IFolder};
         'files': {[key: string]: string};
-        'user': object;
+        'user': firebase.User;
         'selectedFile': IFile;
         'language': ILanguage;
     }

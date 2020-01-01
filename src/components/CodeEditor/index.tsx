@@ -49,11 +49,16 @@ export default class CodeEditor extends React.Component<IProps> {
         const {blockProps: {data}} = props;
         if (data) {
             let {values, formatted} = data;
+            // Back compat - turn value and formatted into 
             if (!values) {
                 values = {};
                 if (data.value) {
                     values['javascript'] = data.value;
                 }
+            }
+            if (!formatted || typeof formatted !== 'object') {
+                const javascript: string = typeof formatted === 'string' ? formatted as string : '';
+                formatted = {javascript};
             }
             return [values, formatted || {}];
         }

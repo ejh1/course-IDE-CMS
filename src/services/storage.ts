@@ -2,11 +2,11 @@ import { addReducers, setGlobal } from 'reactn';
 import firebase from 'firebase/app';
 import 'firebase/auth';
 import 'firebase/storage';
-import undefined from 'firebase/auth';
 
 export interface IFile {
     key: string;
     name: string;
+    forInstructors?: boolean
 }
 export interface IFolder {
     children: IFile[];
@@ -77,17 +77,19 @@ export const initializeGlobalState = () => {
         language: defaultLanguage
     });    
     addReducers({
-        setUser: (_global, _dispatch, user: object) => ({user}),
-        login: async (global, dispatch) => {
-            let result = null;
-            if (useLocal) {
-                result = {user:{local:'user'}};
-            } else {
-                const provider = new firebase.auth.GoogleAuthProvider();
-                result = await app.auth().signInWithPopup(provider);
+        checkLogin: (global, dispatch) => {
+            firebase.auth().onAuthStateChanged(dispatch.setUser);
+        },
+        setUser: (global, dispatch, user: firebase.User) => {
+            if (user) {
+                dispatch.setLanguage(global.language);
             }
-            dispatch.setUser(result.user);
-            dispatch.setLanguage(global.language);
+            return {user};
+        },
+        login: async (global, dispatch) => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            const result = await app.auth().signInWithPopup(provider);
+            dispatch.setUser(result && result.user);
         },
         logout: async (_global, dispatch) => {
             await firebase.auth().signOut();

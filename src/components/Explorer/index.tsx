@@ -1,6 +1,6 @@
 import React, {useDispatch, useGlobal, useState} from 'reactn';
 import { languages, isFolder, IFolder, ROOT_FOLDER } from '@services/storage';
-import { Tree, Button, Select } from 'antd';
+import { Tree, Button, Select, Switch, Icon } from 'antd';
 import cloneDeep from 'lodash/cloneDeep';
 
 const { TreeNode, DirectoryTree } = Tree;
@@ -29,9 +29,11 @@ export const Explorer = (props: IProps) => {
     const saveFile = useDispatch('saveFile');
     const selectFile = useDispatch('selectFile');
     const logout = useDispatch('logout');
-    const [selectedEntity, setSelectedEntity] = useState(null);
-    const [selectedFolder, setSelectedFolder] = useState(null);
+    const [selectedEntityKey, setSelectedEntityKey] = useState(null);
+    const [selectedFolderKey, setSelectedFolder] = useState(null);
 
+    const selectedFolder = folders[selectedFolderKey];
+    const selectedEntity = selectedFolder &&  selectedFolder.children.find(({key}) => key === selectedEntityKey);
     const onSelect = (names: string[]) => {
         const selected = names[names.length-1];
         let selectedFolder = selected;
@@ -40,20 +42,23 @@ export const Explorer = (props: IProps) => {
             selectedFolder = getContainingFolder(selected);
             selectFile(folders[selectedFolder].children.find(({key}) => key === selected));
         }
-        setSelectedEntity(selected);
+        setSelectedEntityKey(selected);
         setSelectedFolder(selectedFolder);
     };
     const displayFolder = (key: string) => {
         const folder = folders[key];
-        return folder && folder.children.map(({key, name}) => isFolder(key) ?
-                <TreeNode title={name} key={key} loadData={loadFolder}>{displayFolder(key)}</TreeNode> :
-                <TreeNode title={name} key={key} isLeaf/>);
+        return folder && folder.children.map(({key, name, forInstructors}) => {
+            const props = {key, title: forInstructors ? <>{name} <Icon type="solution" /></> : name};
+            return isFolder(key) ?
+                <TreeNode {...props} loadData={loadFolder}>{displayFolder(key)}</TreeNode> :
+                <TreeNode {...props} isLeaf/>;
+        });
     };
     const getContainingFolder = (child: string): string =>
         Object.keys(folders).find(key => folders[key].children.some(({key}) => child === key)) || ROOT_FOLDER;
 
     const addToFolder = (isFolder: boolean) => {
-        const folderKey = selectedFolder || ROOT_FOLDER;
+        const folderKey = selectedFolderKey || ROOT_FOLDER;
         const folder = folders[folderKey];
         const newFolder = cloneDeep(folder);
         newFolder.children.push({
@@ -63,13 +68,13 @@ export const Explorer = (props: IProps) => {
         saveFile(folderKey, JSON.stringify(newFolder));
     };
     const modifyContainingFolder = (modifier: (folder: IFolder) => IFolder | void) => {
-        const containingFolderKey = getContainingFolder(selectedEntity);
+        const containingFolderKey = getContainingFolder(selectedEntityKey);
         const modifiedFolder = modifier(cloneDeep(folders[containingFolderKey]));
         modifiedFolder && saveFile(containingFolderKey, JSON.stringify(modifiedFolder));
     }
     const rename = () => {
         modifyContainingFolder((folderClone: IFolder) => {
-            const entity = folderClone.children.find(({key}) => key === selectedEntity);
+            const entity = folderClone.children.find(({key}) => key === selectedEntityKey);
             const newName = prompt('שם חדש', entity.name).trim();
             if (newName && newName != entity.name) {
                 entity.name = newName.replace(/\s+/g, ' ');
@@ -77,11 +82,20 @@ export const Explorer = (props: IProps) => {
             }    
         })
     }
+    const toggleInstructorMode = (forInstructors: boolean) => {
+        modifyContainingFolder((folderClone: IFolder) => {
+            const entity = folderClone.children.find(({key}) => key === selectedEntityKey);
+            if (entity) {
+                entity.forInstructors = forInstructors;
+                return folderClone;
+            }
+        })
+    }
     const deleteFile = () => {
         modifyContainingFolder((folderClone: IFolder) => {
-            const idx = folderClone.children.findIndex(({key}) => key === selectedEntity);
+            const idx = folderClone.children.findIndex(({key}) => key === selectedEntityKey);
             const entity = folderClone.children[idx];
-            if (entity && confirm(`Are you sure you want to delete the ${isFolder(selectedEntity) ? 'folder' : 'file'} ${entity.name}`)) {
+            if (entity && confirm(`Are you sure you want to delete the ${isFolder(selectedEntityKey) ? 'folder' : 'file'} ${entity.name}`)) {
                 folderClone.children.splice(idx,1);
                 return folderClone;
             }
@@ -131,9 +145,15 @@ export const Explorer = (props: IProps) => {
             <Button type="primary" onClick={logout}>יציאה</Button>
             <Button icon="folder-add" onClick={addToFolder.bind(null, true)} />
             <Button icon="file-add" onClick={addToFolder.bind(null, false)} />
-            {selectedEntity && <span>
+            {selectedEntityKey && <span>
                 <Button icon="delete" onClick={deleteFile} />
                 <Button onClick={rename} >שינוי שם</Button>
+                <Switch
+                    checkedChildren="למדריכים"
+                    unCheckedChildren="פתוח"
+                    onChange={toggleInstructorMode}
+                    checked={selectedEntity && selectedEntity.forInstructors}
+                />
             </span>}
         </div>
         <DirectoryTree draggable
